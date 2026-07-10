@@ -1,0 +1,30 @@
+news:
+  rss_feeds:
+    - https://www.mining.com/feed/
+    - https://www.mining-journal.com/rss
+    - https://www.reuters.com/markets/commodities/rss
+  search_engine: rss
+  max_items: 10
+  fetch_timeout: 15
+
+price:
+  api_base: "https://api.example.com/metals"
+  commodities:
+    lithium:
+      unit: CNY/t
+      currency: CNY
+      base_price: 105000
+    copper:
+      unit: CNY/t
+      currency: CNY
+      base_price: 75000
+  cache_ttl: 3600
+  fetch_timeout: 10
+
+llm:
+  provider: qwen
+  base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
+  model: qwen-plus
+  temperature: 0.3
+  max_tokens: 2000
+  timeout: 30

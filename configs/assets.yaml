@@ -1,0 +1,40 @@
+assets:
+  pilbara:
+    aliases:
+      - Pilbara
+      - Pilbara Minerals
+      - Pilgangoora
+      - 皮尔巴拉
+    company: Pilbara Minerals
+    commodity: lithium
+    pdf_urls:
+      - https://corp.pilbaraminerals.com.au/wp-content/uploads/2024/08/Pilbara-Minerals-Mineral-Resources-and-Ore-Reserves-Statement-2024.pdf
+    keywords:
+      - lithium
+      - Li2O
+      - spodumene
+      - 锂矿
+
+  greenbushes:
+    aliases:
+      - Greenbushes
+      - Talison Lithium
+      - 格林布什
+    company: Talison Lithium
+    commodity: lithium
+    pdf_urls: []
+    keywords:
+      - lithium
+      - Li2O
+
+  mount_cattlin:
+    aliases:
+      - Mount Cattlin
+      - Mt Cattlin
+      - Allkem
+    company: Allkem Limited
+    commodity: lithium
+    pdf_urls: []
+    keywords:
+      - lithium
+      - spodumene

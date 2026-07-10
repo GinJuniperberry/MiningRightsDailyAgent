@@ -1,0 +1,38 @@
+services:
+  # 后端 API 服务（FastAPI + LangGraph Agent）
+  backend:
+    build: .
+    container_name: mining-rights-backend
+    volumes:
+      - .:/app
+      - reports-data:/app/reports
+    working_dir: /app
+    environment:
+      - PYTHONPATH=/app
+      - DASHSCOPE_API_KEY=${DASHSCOPE_API_KEY:-}
+      - USE_LLM=${USE_LLM:-true}
+      - LLM_BASE_URL=${LLM_BASE_URL:-https://dashscope.aliyuncs.com/compatible-mode/v1}
+      - LLM_MODEL=${LLM_MODEL:-qwen-plus}
+    command: uvicorn serve.app:app --host 0.0.0.0 --port 8000
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  # 前端 Web 服务（Nginx + React SPA）
+  frontend:
+    build: ./frontend
+    container_name: mining-rights-frontend
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "8080:80"
+    restart: unless-stopped
+
+volumes:
+  reports-data:
