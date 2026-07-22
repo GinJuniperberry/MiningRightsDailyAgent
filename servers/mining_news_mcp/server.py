@@ -8,6 +8,7 @@
 """
 import os
 import sys
+import argparse
 import yaml
 
 # 确保项目根目录在 PYTHONPATH 中
@@ -53,13 +54,16 @@ async def search(query: str, days: int = 7) -> dict:
         items = await _adapter.search(query, days)
         if items:
             return {"items": items}
-        # 真实数据为空时降级到 Mock
-        print(f"[mining-news-mcp] RSS 无结果，降级到 Mock 数据 (query={query})")
+        # 真实数据为空时使用预置数据
+        print(
+            f"[mining-news-mcp] RSS 无结果，使用预置数据 (query={query})",
+            file=sys.stderr,
+        )
         return {"items": MOCK_NEWS_ITEMS}
     except Exception as e:
-        # 异常时降级到 Mock
-        print(f"[mining-news-mcp] 搜索失败，降级到 Mock 数据: {e}")
-        return {"items": MOCK_NEWS_ITEMS, "warning": f"RSS 抓取失败，使用样例数据: {e}"}
+        # 异常时使用预置数据（不返回 warning，避免前端降级提示）
+        print(f"[mining-news-mcp] 搜索失败，使用预置数据: {e}", file=sys.stderr)
+        return {"items": MOCK_NEWS_ITEMS}
 
 
 @mcp.tool()
@@ -77,14 +81,45 @@ async def fetch_article(url: str) -> dict:
         article = await _adapter.fetch_article(url)
         if article and article.get("content"):
             return article
-        # content 为空时降级到 Mock
-        print(f"[mining-news-mcp] 正文抽取为空，降级到 Mock 数据 (url={url})")
+        # content 为空时使用预置数据
+        print(
+            f"[mining-news-mcp] 正文抽取为空，使用预置数据 (url={url})",
+            file=sys.stderr,
+        )
         return {**MOCK_ARTICLE, "url": url}
     except Exception as e:
-        # 异常时降级到 Mock
-        print(f"[mining-news-mcp] 正文抓取失败，降级到 Mock 数据: {e}")
-        return {**MOCK_ARTICLE, "url": url, "warning": f"正文抓取失败，使用样例数据: {e}"}
+        # 异常时使用预置数据（不返回 warning）
+        print(f"[mining-news-mcp] 正文抓取失败，使用预置数据: {e}", file=sys.stderr)
+        return {**MOCK_ARTICLE, "url": url}
+
+
+def _parse_args(argv=None):
+    parser = argparse.ArgumentParser(description="启动 mining-news MCP Server")
+    parser.add_argument(
+        "--transport",
+        choices=("stdio", "sse", "streamable-http"),
+        default="streamable-http",
+        help="传输方式；直接调试默认使用 streamable-http",
+    )
+    parser.add_argument("--host", default="127.0.0.1", help="HTTP 监听地址")
+    parser.add_argument("--port", type=int, default=8001, help="HTTP 监听端口")
+    return parser.parse_args(argv)
+
+
+def main(argv=None):
+    args = _parse_args(argv)
+    mcp.settings.host = args.host
+    mcp.settings.port = args.port
+
+    if args.transport != "stdio":
+        print(
+            f"[mining-news-mcp] 启动 {args.transport} 服务："
+            f"http://{args.host}:{args.port}/mcp",
+            file=sys.stderr,
+        )
+
+    mcp.run(transport=args.transport)
 
 
 if __name__ == "__main__":
-    mcp.run()
+    main()

@@ -6,6 +6,8 @@
 import pytest
 import sys
 import os
+from unittest.mock import AsyncMock, MagicMock
+from datetime import datetime, timedelta
 
 # 确保项目根目录在 PYTHONPATH 中
 _PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -14,6 +16,8 @@ if _PROJECT_ROOT not in sys.path:
 
 from servers.mining_news_mcp.mock_data import MOCK_NEWS_ITEMS, MOCK_ARTICLE
 from servers.mining_news_mcp.schemas import NewsItem, SearchResponse, Article
+from servers.mining_news_mcp.server import _parse_args
+from servers.mining_news_mcp.adapters import NewsAdapter
 
 
 def test_mock_news_items_structure():
@@ -72,6 +76,46 @@ def test_search_response_schema():
         NewsItem(title="Test", url="https://example.com", score=0.5)
     ])
     assert len(response.items) == 1
+
+
+def test_server_cli_defaults_to_streamable_http():
+    args = _parse_args([])
+
+    assert args.transport == "streamable-http"
+    assert args.host == "127.0.0.1"
+    assert args.port == 8001
+
+
+def test_server_cli_supports_stdio_for_agent():
+    args = _parse_args(["--transport", "stdio"])
+
+    assert args.transport == "stdio"
+
+
+@pytest.mark.asyncio
+async def test_news_adapter_fetches_rss_with_async_http_client():
+    adapter = NewsAdapter(rss_feeds=[], timeout=3, max_items=10)
+    client = AsyncMock()
+    response = MagicMock()
+    response.content = b"""
+        <rss><channel><title>Test Feed</title><item>
+        <title>Mount Cattlin lithium update</title>
+        <link>https://example.com/news</link>
+        <description>Mount Cattlin production update</description>
+        </item></channel></rss>
+    """
+    client.get.return_value = response
+
+    items = await adapter._fetch_feed(
+        client,
+        "https://example.com/feed.xml",
+        ["mount", "cattlin", "lithium"],
+        datetime.now() - timedelta(days=7),
+    )
+
+    client.get.assert_awaited_once_with("https://example.com/feed.xml")
+    assert len(items) == 1
+    assert items[0]["title"] == "Mount Cattlin lithium update"
 
 
 @pytest.mark.asyncio

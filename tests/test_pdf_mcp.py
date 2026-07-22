@@ -18,6 +18,7 @@ from servers.mineral_pdf_mcp.table_parser import (
     extract_category_from_row,
 )
 from servers.mineral_pdf_mcp.schemas import ResourceEntry, Quantity, ExtractResponse
+from servers.mineral_pdf_mcp.extractor import PDFExtractor
 
 
 def test_mock_resources_structure():
@@ -88,6 +89,32 @@ def test_extract_category_from_row():
     assert extract_category_from_row(["Inferred", "45.2"]) == "Inferred"
     assert extract_category_from_row(["Measured", "52.8"]) == "Measured"
     assert extract_category_from_row(["Other", "data"]) is None
+
+
+def test_parse_resource_rows_from_asx_page_text():
+    """ASX 报告表格被拆成文本时仍能抽取 Mt Cattlin 资源量。"""
+    text = """
+    Table 1: Mt Cattlin Mineral Resource at 31 December 2022
+    Measured In-situ 0.1 1.0 170 1 37,000 100%
+    Indicated In-situ 9.6 1.4 134 134 2,899,000 130%
+    Stockpiles 1.8 0.8 122 14 484,000 -25%
+    Inferred In-situ 1.3 1.3 169 17 516,000 -80%
+    Total Resource at 31 December 2022 12.8 1.3 179 167 3,936,000 4%
+    """
+
+    resources = PDFExtractor._parse_resource_text(text, page_num=3)
+
+    assert [item["category"] for item in resources] == [
+        "Measured", "Indicated", "Indicated (Stockpiles)", "Inferred"
+    ]
+    assert resources[1]["ore_tonnage"] == {"value": 9.6, "unit": "Mt"}
+    assert resources[1]["grade"] == {"value": 1.4, "unit": "% Li2O"}
+    assert resources[1]["contained_metal"] == {
+        "value": 134.0,
+        "unit": "kt Li2O",
+    }
+    assert sum(item["ore_tonnage"]["value"] for item in resources) == 12.8
+    assert PDFExtractor._detect_project(text) == "Mount Cattlin"
 
 
 def test_quantity_schema():

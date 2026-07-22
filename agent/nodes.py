@@ -11,7 +11,6 @@ from agent.mcp_clients import (
     call_mining_news_tool,
     call_mineral_pdf_tool,
     call_price_tool,
-    close_all_clients,
 )
 from agent.asset_resolver import resolve_asset_by_query
 from agent.report_generator import generate_markdown_report
@@ -21,32 +20,20 @@ from agent.llm_client import llm_client
 
 # ============ 1. parse_intent ============
 
-def parse_intent(state: Dict[str, Any]) -> Dict[str, Any]:
+async def parse_intent(state: Dict[str, Any]) -> Dict[str, Any]:
     """从用户输入中解析矿权、公司、矿种和日报类型
 
     策略：规则优先（关键词匹配），LLM 兜底
     """
     query = state.get("user_query", "")
 
-    # 规则匹配：Pilbara
-    if "pilbara" in query.lower() or "皮尔巴拉" in query:
+    # 已知项目统一从 assets.yaml 的别名配置识别，避免规则与配置漂移。
+    asset = resolve_asset_by_query(query=query)
+    if asset.get("project") != "unknown":
         return {
-            "project": "Pilbara",
-            "company": "Pilbara Minerals",
-            "commodity": "lithium",
-            "report_type": "daily_briefing",
-            "days": 1,
-            "revise_count": 0,
-            "errors": [],
-            "warnings": [],
-        }
-
-    # 规则匹配：Greenbushes
-    if "greenbushes" in query.lower() or "格林布什" in query:
-        return {
-            "project": "Greenbushes",
-            "company": "Talison Lithium",
-            "commodity": "lithium",
+            "project": asset["project"],
+            "company": asset.get("company", "Unknown"),
+            "commodity": asset.get("commodity", "unknown"),
             "report_type": "daily_briefing",
             "days": 1,
             "revise_count": 0,
@@ -65,21 +52,16 @@ def parse_intent(state: Dict[str, Any]) -> Dict[str, Any]:
     elif "金" in query or "gold" in query.lower():
         commodity = "gold"
 
-    # LLM 兜底（如果可用且规则未完全匹配）
+    # LLM 兜底（如果可用且配置、规则均未完整匹配）
     if llm_client.available:
-        import asyncio
-        loop = asyncio.get_event_loop()
-        if loop.is_running():
-            # 在异步上下文中，同步节点无法直接 await
-            # 这里走规则兜底
-            pass
-        else:
-            llm_result = loop.run_until_complete(llm_client.parse_intent(query))
-            if llm_result and llm_result.get("project"):
-                llm_result.setdefault("revise_count", 0)
-                llm_result.setdefault("errors", [])
-                llm_result.setdefault("warnings", [])
-                return llm_result
+        llm_result = await llm_client.parse_intent(query)
+        if llm_result and llm_result.get("project"):
+            llm_result.setdefault("report_type", "daily_briefing")
+            llm_result.setdefault("days", 1)
+            llm_result.setdefault("revise_count", 0)
+            llm_result.setdefault("errors", [])
+            llm_result.setdefault("warnings", [])
+            return llm_result
 
     return {
         "project": "unknown",
@@ -100,9 +82,11 @@ def resolve_asset(state: Dict[str, Any]) -> Dict[str, Any]:
         project=state.get("project", ""),
         company=state.get("company", ""),
         commodity=state.get("commodity", ""),
+        query=state.get("user_query", ""),
     )
 
     return {
+        "project": asset.get("project", state.get("project", "unknown")),
         "aliases": asset.get("aliases", []),
         "pdf_urls": asset.get("pdf_urls", []),
         "company": asset.get("company", state.get("company")),

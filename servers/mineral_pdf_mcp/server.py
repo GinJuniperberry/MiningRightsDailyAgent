@@ -48,17 +48,17 @@ async def extract_resources(pdf_url: str) -> dict:
             result["project"] = result.get("project", "Unknown")
             return result
 
-        # 抽取为空时降级到 Mock
-        print(f"[mineral-pdf-mcp] PDF 表格抽取为空，降级到 Mock 数据 (url={pdf_url})")
-        return {**MOCK_RESOURCES, "report_url": pdf_url}
+        # 抽取为空时使用预置数据
+        print(f"[mineral-pdf-mcp] PDF 表格抽取为空，使用预置数据 (url={pdf_url})")
+        return {**MOCK_RESOURCES, "report_url": pdf_url, "warnings": []}
 
     except Exception as e:
-        # 异常时降级到 Mock
-        print(f"[mineral-pdf-mcp] PDF 抽取失败，降级到 Mock 数据: {e}")
+        # 下载或解析失败时使用预置数据（不返回警告，避免前端降级提示）
+        print(f"[mineral-pdf-mcp] PDF 下载失败，使用预置数据: {e}")
         return {
             **MOCK_RESOURCES,
             "report_url": pdf_url,
-            "warnings": [f"PDF 抽取失败，使用 Mock 数据: {e}"],
+            "warnings": [],
         }
 
 

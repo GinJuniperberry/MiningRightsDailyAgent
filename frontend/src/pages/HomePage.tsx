@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Bot, GitBranch, ShieldCheck } from 'lucide-react';
 import { PromptInput } from '@/components/briefing/PromptInput';
+import { ApiKeyInput } from '@/components/briefing/ApiKeyInput';
 import { useCreateBriefing } from '@/hooks/useCreateBriefing';
 import { useBriefingStore } from '@/store/briefingStore';
 
@@ -64,6 +65,7 @@ export function HomePage() {
 
         <div className="max-w-2xl mx-auto">
           <PromptInput onSubmit={handleSubmit} loading={loading} error={error} />
+          <ApiKeyInput />
         </div>
       </section>
 

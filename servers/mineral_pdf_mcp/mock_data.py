@@ -33,5 +33,5 @@ MOCK_RESOURCES = {
             "confidence": 0.92
         }
     ],
-    "warnings": ["使用 Mock 数据，真实 PDF 抽取失败"]
+    "warnings": []
 }

@@ -70,10 +70,10 @@ async function request<T>(
 
 export const briefingApi = {
   /** 创建日报任务（POST /api/briefings） */
-  async create(query: string): Promise<CreateBriefingResponse> {
+  async create(query: string, apiKey?: string): Promise<CreateBriefingResponse> {
     return request<CreateBriefingResponse>('/briefings', {
       method: 'POST',
-      body: JSON.stringify({ query }),
+      body: JSON.stringify({ query, api_key: apiKey || '' }),
     });
   },
 

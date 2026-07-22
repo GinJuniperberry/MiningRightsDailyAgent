@@ -12,6 +12,7 @@
 import os
 import io
 import hashlib
+import re
 import httpx
 import pdfplumber
 from typing import Dict, Any, List, Optional
@@ -80,15 +81,16 @@ class PDFExtractor:
         """
         resources: List[Dict[str, Any]] = []
         warnings: List[str] = []
+        page_texts = []
 
         try:
             with pdfplumber.open(io.BytesIO(pdf_bytes)) as pdf:
                 for page_num, page in enumerate(pdf.pages, 1):
-                    tables = page.extract_tables()
-                    if not tables:
-                        continue
+                    page_text = page.extract_text() or ""
+                    page_texts.append(page_text)
 
-                    for table in tables:
+                    tables = page.extract_tables()
+                    for table in tables or []:
                         for row in table:
                             if not is_resource_table_row(row):
                                 continue
@@ -96,6 +98,12 @@ class PDFExtractor:
                             entry = self._parse_resource_row(row, page_num)
                             if entry:
                                 resources.append(entry)
+
+                    # 部分 ASX PDF 的数值与分类在视觉上属于同一行，但
+                    # extract_tables() 会把它们拆散；此时从页面文本补抽。
+                    resources.extend(
+                        self._parse_resource_text(page_text, page_num)
+                    )
 
         except Exception as e:
             warnings.append(f"PDF 表格解析出错: {e}")
@@ -109,11 +117,66 @@ class PDFExtractor:
                 seen_categories.add(cat)
                 unique_resources.append(r)
 
+        project = self._detect_project("\n".join(page_texts))
         return {
-            "project": "Unknown",
+            "project": project,
             "resources": unique_resources,
             "warnings": warnings,
         }
+
+    @staticmethod
+    def _parse_resource_text(text: str, page_num: int) -> List[Dict[str, Any]]:
+        """从 PDF 页面文本中解析标准 JORC 资源量数据行。"""
+        pattern = re.compile(
+            r"\b(Measured|Indicated|Inferred|Stockpiles)\s+"
+            r"(?:In-situ\s+)?"
+            r"(\d+(?:\.\d+)?)\s+"       # Tonnage (Mt)
+            r"(\d+(?:\.\d+)?)\s+"       # Grade (% Li2O)
+            r"\d[\d,.]*\s+"              # Grade (ppm Ta2O5)
+            r"(\d[\d,.]*)\s+"            # Contained metal ('000 t Li2O)
+            r"\d[\d,.]*\s+"              # Contained metal (lbs Ta2O5)
+            r"[-+]?\d+(?:\.\d+)?%",
+            re.IGNORECASE,
+        )
+
+        entries = []
+        for match in pattern.finditer(text):
+            category = match.group(1).title()
+            if category == "Stockpiles":
+                category = "Indicated (Stockpiles)"
+            entries.append({
+                "category": category,
+                "ore_tonnage": {
+                    "value": float(match.group(2)),
+                    "unit": "Mt",
+                },
+                "grade": {
+                    "value": float(match.group(3)),
+                    "unit": "% Li2O",
+                },
+                "contained_metal": {
+                    "value": float(match.group(4).replace(",", "")),
+                    "unit": "kt Li2O",
+                },
+                "page": page_num,
+                "confidence": 0.85,
+            })
+        return entries
+
+    @staticmethod
+    def _detect_project(text: str) -> str:
+        """从报告正文识别当前已配置的矿权项目。"""
+        known_projects = {
+            "mount cattlin": "Mount Cattlin",
+            "mt cattlin": "Mount Cattlin",
+            "pilgangoora": "Pilgangoora",
+            "greenbushes": "Greenbushes",
+        }
+        lowered = text.lower()
+        for marker, project in known_projects.items():
+            if marker in lowered:
+                return project
+        return "Unknown"
 
     def _parse_resource_row(self, row: List[Optional[str]],
                             page_num: int) -> Optional[Dict[str, Any]]:

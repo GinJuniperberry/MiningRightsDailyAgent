@@ -2,7 +2,7 @@
   "mcpServers": {
     "mining-news-mcp": {
       "command": "python",
-      "args": ["servers/mining_news_mcp/server.py"],
+      "args": ["servers/mining_news_mcp/server.py", "--transport", "stdio"],
       "env": {
         "PYTHONPATH": "."
       }

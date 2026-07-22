@@ -8,7 +8,8 @@ news:
   fetch_timeout: 15
 
 price:
-  api_base: "https://api.example.com/metals"
+  # 价格数据由本地模拟生成（随机游走模型），无需外部 API
+  api_base: ""
   commodities:
     lithium:
       unit: CNY/t

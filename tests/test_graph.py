@@ -5,6 +5,7 @@
 import pytest
 import sys
 import os
+from unittest.mock import AsyncMock
 
 _PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if _PROJECT_ROOT not in sys.path:
@@ -22,16 +23,18 @@ from agent.nodes import (
 )
 from agent.routers import route_news_result, route_quality_result
 from agent.asset_resolver import resolve_asset_by_query
+from agent.llm_client import llm_client
 from agent.report_generator import generate_markdown_report
 from agent.quality import check_report_quality
 
 
 # ============ parse_intent 测试 ============
 
-def test_parse_intent_pilbara():
+@pytest.mark.asyncio
+async def test_parse_intent_pilbara():
     """测试 parse_intent 识别 Pilbara"""
     state = {"user_query": "给我生成一份关于 Pilbara 锂矿的今日简报"}
-    result = parse_intent(state)
+    result = await parse_intent(state)
 
     assert result["project"] == "Pilbara"
     assert result["company"] == "Pilbara Minerals"
@@ -41,23 +44,61 @@ def test_parse_intent_pilbara():
     assert result["revise_count"] == 0
 
 
-def test_parse_intent_greenbushes():
+@pytest.mark.asyncio
+async def test_parse_intent_greenbushes():
     """测试 parse_intent 识别 Greenbushes"""
     state = {"user_query": "Greenbushes lithium briefing"}
-    result = parse_intent(state)
+    result = await parse_intent(state)
 
     assert result["project"] == "Greenbushes"
     assert result["commodity"] == "lithium"
 
 
-def test_parse_intent_unknown():
+@pytest.mark.asyncio
+async def test_parse_intent_unknown(monkeypatch):
     """测试 parse_intent 未识别项目"""
     state = {"user_query": "给我一份铜矿报告"}
-    result = parse_intent(state)
+    monkeypatch.setattr(
+        type(llm_client), "available", property(lambda self: False)
+    )
+    result = await parse_intent(state)
 
     assert result["project"] == "unknown"
     assert result["commodity"] == "copper"
     assert len(result["warnings"]) > 0
+
+
+@pytest.mark.asyncio
+async def test_parse_intent_mount_cattlin_from_asset_aliases():
+    """首页内置示例应直接匹配资产配置。"""
+    result = await parse_intent({
+        "user_query": "Mount Cattlin 今日行情与风险提示",
+    })
+
+    assert result["project"] == "Mount Cattlin"
+    assert result["company"] == "Allkem Limited"
+    assert result["commodity"] == "lithium"
+
+
+@pytest.mark.asyncio
+async def test_parse_intent_awaits_llm_fallback(monkeypatch):
+    """配置和规则无法识别项目时，应在异步节点中等待 LLM 结果。"""
+    llm_parse = AsyncMock(return_value={
+        "project": "Example Mine",
+        "company": "Example Mining",
+        "commodity": "copper",
+    })
+    monkeypatch.setattr(
+        type(llm_client), "available", property(lambda self: True)
+    )
+    monkeypatch.setattr(llm_client, "parse_intent", llm_parse)
+
+    result = await parse_intent({"user_query": "Example Mine 今日简报"})
+
+    llm_parse.assert_awaited_once_with("Example Mine 今日简报")
+    assert result["project"] == "Example Mine"
+    assert result["report_type"] == "daily_briefing"
+    assert result["days"] == 1
 
 
 # ============ resolve_asset 测试 ============
@@ -83,6 +124,18 @@ def test_resolve_asset_by_query_function():
     assert asset["company"] == "Pilbara Minerals"
     assert asset["commodity"] == "lithium"
     assert "Pilbara" in asset["aliases"]
+
+
+def test_resolve_asset_by_original_query():
+    """资产解析器能够从完整用户查询中匹配别名。"""
+    asset = resolve_asset_by_query(query="Mount Cattlin 今日行情与风险提示")
+
+    assert asset["project"] == "Mount Cattlin"
+    assert asset["company"] == "Allkem Limited"
+    assert asset["commodity"] == "lithium"
+    assert asset["pdf_urls"] == [
+        "https://announcements.asx.com.au/asxpdf/20230417/pdf/45nqh92rsy3qmh.pdf"
+    ]
 
 
 def test_resolve_asset_unknown():

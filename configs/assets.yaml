@@ -34,7 +34,8 @@ assets:
       - Allkem
     company: Allkem Limited
     commodity: lithium
-    pdf_urls: []
+    pdf_urls:
+      - https://announcements.asx.com.au/asxpdf/20230417/pdf/45nqh92rsy3qmh.pdf
     keywords:
       - lithium
       - spodumene

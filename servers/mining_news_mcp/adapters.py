@@ -6,6 +6,8 @@
 import feedparser
 import httpx
 import trafilatura
+import sys
+import asyncio
 from datetime import datetime, timedelta
 from typing import List, Dict, Any
 
@@ -35,22 +37,39 @@ class NewsAdapter:
         cutoff = datetime.now() - timedelta(days=days)
         all_items: List[Dict[str, Any]] = []
 
-        for feed_url in self.rss_feeds:
-            try:
-                feed_items = await self._fetch_feed(feed_url, keywords, cutoff)
-                all_items.extend(feed_items)
-            except Exception as e:
-                print(f"[NewsAdapter] RSS 抓取失败 {feed_url}: {e}")
+        async with httpx.AsyncClient(
+            timeout=self.timeout,
+            follow_redirects=True,
+            headers={"User-Agent": "Mozilla/5.0"},
+        ) as client:
+            results = await asyncio.gather(
+                *(
+                    self._fetch_feed(client, feed_url, keywords, cutoff)
+                    for feed_url in self.rss_feeds
+                ),
+                return_exceptions=True,
+            )
+
+        for feed_url, result in zip(self.rss_feeds, results):
+            if isinstance(result, Exception):
+                print(
+                    f"[NewsAdapter] RSS 抓取失败 {feed_url}: {result}",
+                    file=sys.stderr,
+                )
                 continue
+            all_items.extend(result)
 
         # 按相关度评分排序，取 top N
         all_items.sort(key=lambda x: x.get("score", 0), reverse=True)
         return all_items[: self.max_items]
 
-    async def _fetch_feed(self, feed_url: str, keywords: List[str],
+    async def _fetch_feed(self, client: httpx.AsyncClient, feed_url: str,
+                          keywords: List[str],
                           cutoff: datetime) -> List[Dict[str, Any]]:
         """抓取单个 RSS 源并过滤"""
-        feed = feedparser.parse(feed_url)
+        response = await client.get(feed_url)
+        response.raise_for_status()
+        feed = feedparser.parse(response.content)
         items = []
 
         for entry in feed.entries:

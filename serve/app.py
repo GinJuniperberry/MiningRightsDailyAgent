@@ -33,6 +33,7 @@ load_dotenv()
 
 from agent.graph import build_graph
 from agent.mcp_clients import close_all_clients
+from agent.llm_client import llm_client
 
 app = FastAPI(title="矿权日报 Agent API", version="1.0.0")
 
@@ -50,6 +51,7 @@ app.add_middleware(
 
 class CreateBriefingRequest(BaseModel):
     query: str
+    api_key: Optional[str] = None
 
 
 class CreateBriefingResponse(BaseModel):
@@ -270,12 +272,21 @@ def _build_report_response(task: Dict[str, Any]) -> Dict[str, Any]:
 
 # ============ LangGraph 执行器 ============
 
-async def run_briefing_task(task_id: str, query: str):
+async def run_briefing_task(task_id: str, query: str, api_key: str = ""):
     """后台执行 LangGraph 任务，发射事件到 SSE
 
     使用 graph.astream() 的双流模式同时获取节点更新和完整状态快照，
     避免重复执行图（旧代码 astream + ainvoke 会执行两遍）。
+
+    Args:
+        task_id: 任务 ID
+        query: 用户查询
+        api_key: 前端传入的通义千问 API Key，空字符串则走纯规则模式
     """
+    # 如果前端传入了 API Key，重新初始化 LLM 客户端
+    if api_key is not None:
+        llm_client.reinit(api_key)
+
     graph = build_graph()
     initial_state = {"user_query": query}
 
@@ -308,9 +319,9 @@ async def run_briefing_task(task_id: str, query: str):
                     "timestamp": timestamp,
                 })
 
-                # 检查是否有警告
-                warnings = state_update.get("warnings", [])
+                # 检查节点是否降级（基于节点自身输出判断，不受累积 warnings 影响）
                 errors = state_update.get("errors", [])
+                degraded = _check_node_degraded(node_name, state_update)
 
                 if errors:
                     store.add_event(task_id, {
@@ -319,7 +330,7 @@ async def run_briefing_task(task_id: str, query: str):
                         "message": f"{label} 执行中出现错误",
                         "timestamp": datetime.now().isoformat(),
                     })
-                elif warnings and node_name in ("search_news", "extract_resources", "fetch_price"):
+                elif degraded:
                     store.add_event(task_id, {
                         "type": "node_warning",
                         "node": node_name,
@@ -370,6 +381,29 @@ async def run_briefing_task(task_id: str, query: str):
         })
     finally:
         await close_all_clients()
+
+
+def _check_node_degraded(node_name: str, state_update: Dict[str, Any]) -> bool:
+    """检查节点是否降级（基于节点自身输出判断）
+
+    不依赖累积的 warnings 列表，而是检查节点返回的数据是否为空，
+    避免前序节点的 warning 传递到后续节点导致误报。
+
+    Args:
+        node_name: 节点名称
+        state_update: 节点返回的状态更新
+
+    Returns:
+        True 如果该节点自身降级（数据为空）
+    """
+    if node_name == "search_news":
+        return len(state_update.get("news_items", [])) == 0
+    if node_name == "extract_resources":
+        resources = state_update.get("resources", {})
+        return len(resources.get("resources", [])) == 0 if resources else True
+    if node_name == "fetch_price":
+        return not state_update.get("latest_price")
+    return False
 
 
 def _build_node_message(node_name: str, state_update: Dict[str, Any]) -> str:
@@ -431,8 +465,9 @@ async def create_briefing(request: CreateBriefingRequest):
 
     task_id = store.create_task(request.query)
 
-    # 后台执行任务
-    asyncio.create_task(run_briefing_task(task_id, request.query))
+    # 后台执行任务（传入前端提供的 API Key，空则走规则模式）
+    api_key = (request.api_key or "").strip()
+    asyncio.create_task(run_briefing_task(task_id, request.query, api_key))
 
     return CreateBriefingResponse(task_id=task_id, status="running")
 

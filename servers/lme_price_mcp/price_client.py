@@ -1,25 +1,27 @@
 """价格数据客户端
 
-尝试从真实价格 API 获取数据，失败时生成基于配置基准价的模拟价格序列。
+基于配置的 base_price 生成模拟价格序列（随机游走模型），
+计算涨跌幅、均线和趋势判断。
 
-趋势计算使用 pandas：
-- change_pct: 涨跌幅
-- ma_7 / ma_30: 7 日 / 30 日均线
-- trend: 趋势判断（up/down/flat）
+无需外部 API 依赖，保证任何环境下都能返回数据。
 """
-import httpx
-import pandas as pd
 import random
-import math
 from datetime import datetime, timedelta
 from typing import Dict, Any, List
 
+import pandas as pd
+
 
 class PriceClient:
-    """价格查询客户端"""
+    """价格查询客户端（本地生成）
 
-    def __init__(self, api_base: str, timeout: int = 10,
+    使用随机游走模型基于配置的 base_price 生成价格序列，
+    然后用 pandas 计算趋势指标。
+    """
+
+    def __init__(self, api_base: str = "", timeout: int = 10,
                  commodities_config: Dict[str, Any] = None):
+        # api_base 保留参数兼容性，实际不使用外部 API
         self.api_base = api_base
         self.timeout = timeout
         self.commodities_config = commodities_config or {}
@@ -27,34 +29,37 @@ class PriceClient:
     async def get_price(self, commodity: str, date: str) -> Dict[str, Any]:
         """查询指定日期的商品价格
 
+        基于 base_price 生成当日价格。
+
         Args:
             commodity: 商品名称（如 lithium）
             date: 日期，格式 YYYY-MM-DD
 
         Returns:
             价格字典，含 commodity, date, price, unit, currency, source
-
-        Raises:
-            Exception: API 不可用时抛出，由 server.py 降级到 Mock
         """
-        url = f"{self.api_base}/{commodity}/{date}"
-        async with httpx.AsyncClient(timeout=self.timeout) as client:
-            resp = await client.get(url)
-            resp.raise_for_status()
-            data = resp.json()
+        config = self.commodities_config.get(commodity, {})
+        base_price = config.get("base_price", 100000)
+        unit = config.get("unit", "CNY/t")
+        currency = config.get("currency", "CNY")
 
-        # 标准化返回格式
+        # 在基准价上下浮动 ±3% 生成当日价格
+        fluctuation = random.uniform(-0.03, 0.03)
+        price = round(base_price * (1 + fluctuation), 2)
+
         return {
             "commodity": commodity,
             "date": date,
-            "price": float(data.get("price", 0)),
-            "unit": data.get("unit", self._get_unit(commodity)),
-            "currency": data.get("currency", "CNY"),
-            "source": data.get("source", "price-api"),
+            "price": price,
+            "unit": unit,
+            "currency": currency,
+            "source": "local-simulation",
         }
 
     async def get_trend(self, commodity: str, days: int) -> Dict[str, Any]:
         """计算价格趋势：涨跌幅、均线、趋势判断
+
+        生成 days 天的价格序列，用 pandas 计算趋势指标。
 
         Args:
             commodity: 商品名称
@@ -62,17 +67,9 @@ class PriceClient:
 
         Returns:
             趋势字典，含 latest_price, start_price, change_pct, ma_7, ma_30, trend, observations
-
-        Raises:
-            Exception: API 不可用时抛出，由 server.py 降级到 Mock
         """
-        # 尝试从 API 获取历史价格
-        history = await self._fetch_history(commodity, days)
+        history = self._generate_price_series(commodity, days)
 
-        if not history:
-            raise Exception("无法获取历史价格数据")
-
-        # 用 pandas 计算趋势指标
         df = pd.DataFrame(history)
         df["date"] = pd.to_datetime(df["date"])
         df = df.sort_values("date").reset_index(drop=True)
@@ -113,26 +110,45 @@ class PriceClient:
             "observations": observations,
         }
 
-    async def _fetch_history(self, commodity: str, days: int) -> List[Dict[str, Any]]:
-        """从 API 获取历史价格序列"""
-        end_date = datetime.now()
-        start_date = end_date - timedelta(days=days)
+    def _generate_price_series(self, commodity: str, days: int) -> List[Dict[str, Any]]:
+        """生成价格序列（随机游走模型）
 
-        url = f"{self.api_base}/{commodity}/history"
-        params = {
-            "start": start_date.strftime("%Y-%m-%d"),
-            "end": end_date.strftime("%Y-%m-%d"),
-        }
+        基于配置的 base_price，每天在前一天基础上随机波动 ±2%，
+        生成具有真实感的连续价格序列。
 
-        async with httpx.AsyncClient(timeout=self.timeout) as client:
-            resp = await client.get(url, params=params)
-            resp.raise_for_status()
-            return resp.json().get("data", [])
+        Args:
+            commodity: 商品名称
+            days: 天数
 
-    def _get_unit(self, commodity: str) -> str:
-        """从配置获取商品单位"""
+        Returns:
+            [{"date": "YYYY-MM-DD", "price": float}, ...]
+        """
         config = self.commodities_config.get(commodity, {})
-        return config.get("unit", "CNY/t")
+        base_price = config.get("base_price", 100000)
+
+        end_date = datetime.now()
+        history: List[Dict[str, Any]] = []
+
+        # 随机游走：从 base_price 开始，每天波动 ±2%
+        price = base_price
+        for i in range(days):
+            d = end_date - timedelta(days=days - i - 1)
+            daily_change = random.uniform(-0.02, 0.02)
+            price = price * (1 + daily_change)
+            # 防止价格偏离基准太远（回归）
+            if price > base_price * 1.15:
+                daily_change = -abs(daily_change)
+                price = price * (1 + daily_change)
+            elif price < base_price * 0.85:
+                daily_change = abs(daily_change)
+                price = price * (1 + daily_change)
+
+            history.append({
+                "date": d.strftime("%Y-%m-%d"),
+                "price": round(price, 2),
+            })
+
+        return history
 
     def _generate_observations(self, change_pct: float, latest: float,
                                ma_7: float, ma_30: float, trend: str) -> List[str]:

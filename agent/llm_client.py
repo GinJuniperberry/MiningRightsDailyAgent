@@ -44,6 +44,10 @@ class LLMClient:
         self.model = os.getenv("LLM_MODEL", "qwen-plus")
 
         self.client = None
+        self._init_client()
+
+    def _init_client(self):
+        """根据当前 api_key 和配置初始化 AsyncOpenAI 客户端"""
         if self.api_key and self.use_llm:
             try:
                 self.client = AsyncOpenAI(
@@ -53,6 +57,22 @@ class LLMClient:
             except Exception as e:
                 print(f"[LLM] 客户端初始化失败，将走规则模式: {e}")
                 self.client = None
+        else:
+            self.client = None
+
+    def reinit(self, api_key: str):
+        """使用新的 API Key 重新初始化客户端
+
+        Args:
+            api_key: 通义千问 API Key，空字符串则禁用 LLM
+        """
+        self.api_key = api_key.strip()
+        self.use_llm = bool(self.api_key)
+        self._init_client()
+        if self.api_key:
+            print(f"[LLM] 已使用前端传入的 API Key 重新初始化，模型: {self.model}")
+        else:
+            print("[LLM] 未提供 API Key，走纯规则模式")
 
     @property
     def available(self) -> bool:

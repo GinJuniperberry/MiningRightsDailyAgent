@@ -2,14 +2,14 @@
 
 ## 1. 环境要求
 
-| 依赖 | 版本 | 说明 |
-|------|------|------|
-| Python | 3.11+ | 后端 Agent / MCP Server / FastAPI |
-| pip | 最新 | Python 包管理 |
-| Node.js | 18+ / 20+ | 前端构建（仅前后端分离或前端开发时需要） |
-| npm / pnpm | npm 9+ | 前端包管理 |
-| Docker & Docker Compose | 最新（可选） | 一键容器化部署 |
-| 通义千问 API Key | 可选 | 不配置则走纯规则模式，仍可生成完整日报 |
+| 依赖                      | 版本        | 说明                              |
+| ----------------------- | --------- | ------------------------------- |
+| Python                  | 3.11+     | 后端 Agent / MCP Server / FastAPI |
+| pip                     | 最新        | Python 包管理                      |
+| Node.js                 | 18+ / 20+ | 前端构建（仅前后端分离或前端开发时需要）            |
+| npm / pnpm              | npm 9+    | 前端包管理                           |
+| Docker & Docker Compose | 最新（可选）    | 一键容器化部署                         |
+| 通义千问 API Key            | 可选        | 不配置则走纯规则模式，仍可生成完整日报             |
 
 ## 2. 安装依赖
 
@@ -67,11 +67,11 @@ docker compose up --build
 
 启动后访问：
 
-| 服务 | 地址 |
-|------|------|
-| 前端 Web | http://localhost:8080 |
-| 后端 API | http://localhost:8000 |
-| API 健康检查 | http://localhost:8000/api/health |
+| 服务       | 地址                                 |
+| -------- | ---------------------------------- |
+| 前端 Web   | <http://localhost:8080>            |
+| 后端 API   | <http://localhost:8000>            |
+| API 健康检查 | <http://localhost:8000/api/health> |
 
 ### 方式三：前后端分离本地开发（推荐调试）
 
@@ -88,11 +88,12 @@ uvicorn serve.app:app --host 0.0.0.0 --port 8000 --reload
 ```bash
 cd frontend
 npm run dev
+# npm.cmd run dev 如果PowerShell 当前策略禁止直接执行 npm.ps1
 ```
 
 前端开发服务器已配置代理，`/api` 请求自动转发到 `http://localhost:8000`，无需额外配置跨域。
 
-访问 http://localhost:5173 即可使用 Web 界面。
+访问 <http://localhost:5173> 即可使用 Web 界面。
 
 > 两个终端分别保持运行，修改代码会自动热更新。
 
@@ -115,14 +116,14 @@ npm run preview
 
 后端 FastAPI 提供以下 REST 接口：
 
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| POST | `/api/briefings` | 创建日报任务，返回 `task_id` |
-| GET | `/api/briefings/{task_id}/events` | SSE 实时事件流（节点进度） |
-| GET | `/api/briefings/{task_id}` | 获取报告详情（任务运行中返回 202） |
-| GET | `/api/briefings/{task_id}/download` | 下载 Markdown 报告 |
-| GET | `/api/briefings` | 获取历史报告列表（支持分页、关键词搜索） |
-| GET | `/api/health` | 健康检查 |
+| 方法   | 路径                                  | 说明                   |
+| ---- | ----------------------------------- | -------------------- |
+| POST | `/api/briefings`                    | 创建日报任务，返回 `task_id`  |
+| GET  | `/api/briefings/{task_id}/events`   | SSE 实时事件流（节点进度）      |
+| GET  | `/api/briefings/{task_id}`          | 获取报告详情（任务运行中返回 202）  |
+| GET  | `/api/briefings/{task_id}/download` | 下载 Markdown 报告       |
+| GET  | `/api/briefings`                    | 获取历史报告列表（支持分页、关键词搜索） |
+| GET  | `/api/health`                       | 健康检查                 |
 
 ### 创建任务示例
 
@@ -142,20 +143,27 @@ curl -X POST http://localhost:8000/api/briefings \
 
 通过 `EventSource` 订阅 `/api/briefings/{task_id}/events`，接收事件类型：
 
-| 事件 type | 说明 |
-|-----------|------|
-| `node_start` | 节点开始执行 |
-| `node_success` | 节点执行成功 |
+| 事件 type        | 说明          |
+| -------------- | ----------- |
+| `node_start`   | 节点开始执行      |
+| `node_success` | 节点执行成功      |
 | `node_warning` | 节点降级 / 出现警告 |
-| `task_done` | 任务完成 |
-| `task_failed` | 任务失败 |
+| `task_done`    | 任务完成        |
+| `task_failed`  | 任务失败        |
 
 ## 7. 单独启动 MCP Server（调试用）
 
-三个 MCP Server 通过 stdio 传输，通常由 Agent 自动拉起。如需单独调试：
+三个 MCP Server 通常由 Agent 通过 stdio 自动拉起。新闻服务支持直接启动
+Streamable HTTP 调试端点：
 
 ```bash
+# 启动 HTTP MCP 服务：http://127.0.0.1:8001/mcp
 python servers/mining_news_mcp/server.py
+
+# 验证 Agent 使用的 stdio 模式
+python servers/mining_news_mcp/server.py --transport stdio
+
+# 另外两个服务目前仅提供 stdio 模式
 python servers/mineral_pdf_mcp/server.py
 python servers/lme_price_mcp/server.py
 ```
@@ -192,10 +200,10 @@ cat reports/pilbara_daily_briefing_2026-07-09.md
 
 ## 11. 端口说明
 
-| 服务 | 端口 | 说明 |
-|------|------|------|
-| 后端 FastAPI | 8000 | REST + SSE API |
-| 前端 Vite dev | 5173 | 开发服务器（代理 /api → 8000） |
+| 服务               | 端口        | 说明                          |
+| ---------------- | --------- | --------------------------- |
+| 后端 FastAPI       | 8000      | REST + SSE API              |
+| 前端 Vite dev      | 5173      | 开发服务器（代理 /api → 8000）       |
 | 前端 Nginx（Docker） | 8080 → 80 | 生产容器，反代 /api → backend:8000 |
 
 ## 12. 项目结构
@@ -243,17 +251,17 @@ mining-rights-daily-agent/
 
 系统采用"真实数据源 + Mock 兜底"策略，保证 demo 任何时候可运行：
 
-| 数据源 | 真实来源 | 降级方案 |
-|--------|----------|----------|
-| 新闻 | RSS 源（mining.com 等） | 内置 Mock 新闻数据（基于 Pilbara 锂矿公开信息） |
+| 数据源     | 真实来源                  | 降级方案                             |
+| ------- | --------------------- | -------------------------------- |
+| 新闻      | RSS 源（mining.com 等）   | 内置 Mock 新闻数据（基于 Pilbara 锂矿公开信息）  |
 | PDF 资源量 | 下载真实 NI 43-101 PDF 解析 | Mock 资源量数据（Indicated / Inferred） |
-| 价格行情 | 真实价格 API | Mock 价格 + 趋势数据 |
+| 价格行情    | 真实价格 API              | Mock 价格 + 趋势数据                   |
 
 降级时会在报告中以 `warnings` 字段标注，前端会在警告面板中展示。
 
 ## 14. 常见问题
 
-**Q: 启动后端报 `ModuleNotFoundError: No module named 'agent'`？**
+**Q: 启动后端报** **`ModuleNotFoundError: No module named 'agent'`？**
 A: 确保在项目根目录执行命令，或设置 `PYTHONPATH=.`。
 
 **Q: 前端页面打开后接口报 502 / 连接失败？**

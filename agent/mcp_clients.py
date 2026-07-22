@@ -1,7 +1,7 @@
 """MCP 客户端封装
 
 在 LangGraph node 内调用 MCP tools。基于 stdio transport 与 MCP Server 通信。
-提供单例缓存的客户端管理，避免重复创建连接。
+每次工具调用独立管理连接，确保 AnyIO 上下文在同一异步任务中创建和关闭。
 """
 import os
 import sys
@@ -107,50 +107,30 @@ class MCPToolClient:
         self._exit_stack = None
 
 
-# 全局客户端缓存
-_clients: Dict[str, MCPToolClient] = {}
-
-
-async def get_client(server_name: str) -> MCPToolClient:
-    """获取或创建 MCP 客户端（单例缓存）
-
-    Args:
-        server_name: MCP Server 名称
-
-    Returns:
-        已连接的 MCPToolClient 实例
-    """
-    if server_name not in _clients:
-        config = _load_mcp_config(server_name)
-        client = MCPToolClient(server_name, config)
-        await client.connect()
-        _clients[server_name] = client
-    return _clients[server_name]
+async def _call_tool_once(server_name: str, tool_name: str,
+                          arguments: Dict[str, Any]) -> Dict[str, Any]:
+    """在当前异步任务内完成连接、调用和关闭。"""
+    client = MCPToolClient(server_name, _load_mcp_config(server_name))
+    try:
+        return await client.call_tool(tool_name, arguments)
+    finally:
+        await client.close()
 
 
 async def call_mining_news_tool(tool_name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
     """调用 mining-news-mcp 的工具"""
-    client = await get_client("mining-news-mcp")
-    return await client.call_tool(tool_name, arguments)
+    return await _call_tool_once("mining-news-mcp", tool_name, arguments)
 
 
 async def call_mineral_pdf_tool(tool_name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
     """调用 mineral-pdf-mcp 的工具"""
-    client = await get_client("mineral-pdf-mcp")
-    return await client.call_tool(tool_name, arguments)
+    return await _call_tool_once("mineral-pdf-mcp", tool_name, arguments)
 
 
 async def call_price_tool(tool_name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
     """调用 lme-price-mcp 的工具"""
-    client = await get_client("lme-price-mcp")
-    return await client.call_tool(tool_name, arguments)
+    return await _call_tool_once("lme-price-mcp", tool_name, arguments)
 
 
 async def close_all_clients():
-    """关闭所有客户端连接"""
-    for client in _clients.values():
-        try:
-            await client.close()
-        except Exception as e:
-            print(f"[MCPClient] 关闭 {client.server_name} 失败: {e}")
-    _clients.clear()
+    """兼容旧调用；连接现在会在每次工具调用结束时立即关闭。"""

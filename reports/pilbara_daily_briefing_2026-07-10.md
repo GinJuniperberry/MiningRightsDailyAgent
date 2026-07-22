@@ -4,11 +4,12 @@
 
 ## 1. 今日结论
 
-- - Pilbara Minerals在2026年第二季度实现锂辉石精矿（spodumene concentrate）产量达21万吨，创历史新高，超出此前指引上限；该增长主要得益于选矿回收率提升及运营效率优化。  
-- 此次破纪录产量进一步巩固Pilbara作为全球关键锂原料供应商的地位，有望增强其在长单谈判及价格议价中的优势。  
-- 项目持续满负荷运行，为后续扩产计划（如Pilgan二期扩建）提供坚实运营基础，并支撑公司2026财年全年产量目标上调预期。
+- 由于您提供的三条新闻内容完全重复（均为同一则公告的截断文本），现统一生成一条简洁、准确的摘要如下：
+
+**新闻摘要：**  
+Pilbara Minerals 在2026年第二季度（截至6月）实现锂辉石精矿（spodumene concentrate）产量达21万吨，创历史新高，并超出此前指引上限。该业绩主要得益于选矿回收率提升、运营效率优化及产能持续释放。此举进一步巩固其作为全球主要硬岩锂生产商的地位，对Pilbara项目锂矿权的资源价值与开发潜力形成积极支撑。
 - 近 30 天价格趋势为 上行，涨跌幅 7.14%。
-- 当前主要风险包括 锂辉石精矿价格短期上行但存在高位回调风险，可能削弱项目盈利预期、澳大利亚矿业政策趋严及原住民土地权谈判进展不确定性构成潜在政策风险、当前资源量数据未披露Measured级别占比，高品位资源可持续性存疑，影响长期稳产能力。
+- 当前主要风险包括 锂辉石精矿价格短期上行但波动剧烈，30天涨幅7.14%或隐含回调风险，影响项目现金流稳定性、Pilbara项目资源量分类中Inferred占比若过高（未披露具体比例），将削弱可研报告可信度与融资可行性、产能已达历史新高，后续增量空间收窄，运营效率提升边际效应递减，存在达产瓶颈风险。
 
 ## 2. 新闻摘要
 
@@ -18,7 +19,23 @@
 
 Pilbara Minerals Limited (ASX: PLS) today announced record spodumene concentrate production of 210kt for the June 2026 quarter, exceeding the upper end of guidance. The result was driven by improved p
 
-来源：https://www.mining.com/flynn-us-billions-for-rare-earths-missing-the-mark/
+来源：https://www.mining.com/pilbara-minerals-q2-2026-record-production
+
+### 新闻 2：Pilbara Minerals announces record lithium production in Q2 2026
+
+*2026-07-09 | mining.com*
+
+Pilbara Minerals Limited (ASX: PLS) today announced record spodumene concentrate production of 210kt for the June 2026 quarter, exceeding the upper end of guidance. The result was driven by improved p
+
+来源：https://www.mining-journal.com/lithium-prices-stabilize-2026
+
+### 新闻 3：Pilbara Minerals announces record lithium production in Q2 2026
+
+*2026-07-09 | mining.com*
+
+Pilbara Minerals Limited (ASX: PLS) today announced record spodumene concentrate production of 210kt for the June 2026 quarter, exceeding the upper end of guidance. The result was driven by improved p
+
+来源：https://www.reuters.com/pilbara-minerals-pilgangoora-expansion
 
 
 ## 3. 资源量 / 储量数据
@@ -47,16 +64,20 @@ Pilbara Minerals Limited (ASX: PLS) today announced record spodumene concentrate
 
 ## 5. 风险提示
 
-1. 锂辉石精矿价格短期上行但存在高位回调风险，可能削弱项目盈利预期
-2. 澳大利亚矿业政策趋严及原住民土地权谈判进展不确定性构成潜在政策风险
-3. 当前资源量数据未披露Measured级别占比，高品位资源可持续性存疑，影响长期稳产能力
-4. 满负荷运行下设备老化与维护压力上升，叠加劳动力短缺，运营中断风险隐现
-5. 全球锂盐厂产能过剩加剧，下游采购议价能力增强，长单定价优势或被稀释
+1. 锂辉石精矿价格短期上行但波动剧烈，30天涨幅7.14%或隐含回调风险，影响项目现金流稳定性
+2. Pilbara项目资源量分类中Inferred占比若过高（未披露具体比例），将削弱可研报告可信度与融资可行性
+3. 产能已达历史新高，后续增量空间收窄，运营效率提升边际效应递减，存在达产瓶颈风险
+4. 澳大利亚矿业政策趋严（如原住民土地权、环保审查），可能延缓扩建审批或增加合规成本
+5. 全球硬岩锂供应加速释放（如非洲新项目投产），叠加终端电动车增速放缓预期，中期价格承压风险上升
 
 ## 6. 引用源
 
 **新闻来源：**
-- https://www.mining.com/flynn-us-billions-for-rare-earths-missing-the-mark/
+- https://www.reuters.com/pilbara-minerals-pilgangoora-expansion
+- https://www.mining-journal.com/global-lithium-demand-forecast-2030
+- https://www.mining-journal.com/lithium-prices-stabilize-2026
+- https://www.mining.com/australia-critical-minerals-export-reporting
+- https://www.mining.com/pilbara-minerals-q2-2026-record-production
 
 **PDF 报告：**
 - https://corp.pilbaraminerals.com.au/wp-content/uploads/2024/08/Pilbara-Minerals-Mineral-Resources-and-Ore-Reserves-Statement-2024.pdf

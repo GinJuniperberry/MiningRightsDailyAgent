@@ -9,6 +9,17 @@ import type {
 } from '@/types/briefing';
 import { NODE_FLOW } from '@/lib/nodeFlow';
 
+const API_KEY_STORAGE = 'mining_api_key';
+
+/** 从 localStorage 读取 API Key */
+function loadApiKey(): string {
+  try {
+    return localStorage.getItem(API_KEY_STORAGE) || '';
+  } catch {
+    return '';
+  }
+}
+
 /** 构建初始节点状态映射 */
 function makeInitialNodes(): Record<string, NodeRunInfo> {
   const map: Record<string, NodeRunInfo> = {};
@@ -41,7 +52,11 @@ interface BriefingState {
   events: NodeEvent[];
   /** 错误信息 */
   error: string | null;
+  /** 通义千问 API Key（持久化到 localStorage） */
+  apiKey: string;
 
+  /** 设置 API Key（同步写入 localStorage） */
+  setApiKey: (key: string) => void;
   /** 设置为创建中状态 */
   setCreating: () => void;
   /** 任务创建成功，进入 running 状态 */
@@ -61,6 +76,16 @@ export const useBriefingStore = create<BriefingState>((set) => ({
   nodes: makeInitialNodes(),
   events: [],
   error: null,
+  apiKey: loadApiKey(),
+
+  setApiKey: (key: string) => {
+    try {
+      localStorage.setItem(API_KEY_STORAGE, key);
+    } catch {
+      // localStorage 不可用时忽略
+    }
+    set({ apiKey: key });
+  },
 
   setCreating: () => set({ status: 'creating', error: null }),
 

@@ -20,6 +20,7 @@ export function useCreateBriefing(): UseCreateBriefingResult {
   const startTask = useBriefingStore((s) => s.startTask);
   const setCreating = useBriefingStore((s) => s.setCreating);
   const setStoreError = useBriefingStore((s) => s.setError);
+  const apiKey = useBriefingStore((s) => s.apiKey);
 
   const create = useCallback(
     async (query: string): Promise<string | null> => {
@@ -34,7 +35,7 @@ export function useCreateBriefing(): UseCreateBriefingResult {
       setCreating();
 
       try {
-        const res = await briefingApi.create(trimmed);
+        const res = await briefingApi.create(trimmed, apiKey);
         startTask(res.task_id, trimmed);
         return res.task_id;
       } catch (err) {
@@ -51,7 +52,7 @@ export function useCreateBriefing(): UseCreateBriefingResult {
         setLoading(false);
       }
     },
-    [startTask, setCreating, setStoreError],
+    [startTask, setCreating, setStoreError, apiKey],
   );
 
   return { create, loading, error };
